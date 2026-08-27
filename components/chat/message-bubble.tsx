@@ -18,7 +18,7 @@ import rehypeRaw from "rehype-raw";
 import remarkGfm from "remark-gfm";
 import remarkBreaks from "remark-breaks";
 import { createPortal } from "react-dom";
-import { Blocks, Maximize2, ReceiptText } from "lucide-react";
+import { Blocks, Code2, Eye, Maximize2, ReceiptText } from "lucide-react";
 import { retryChatGeneratedImage } from "@/lib/generated-image-retry";
 import { GeneratedImageErrorDialog } from "./generated-image-error-dialog";
 import { ScanPayCard } from "@/components/chat/scan-pay-card";
@@ -320,6 +320,7 @@ function ChatHtmlInlineFrame({
     const iframeRef = useRef<HTMLIFrameElement>(null);
     const [height, setHeight] = useState(240);
     const [expanded, setExpanded] = useState(false);
+    const [showSource, setShowSource] = useState(false);
     const allowFullscreen = variant !== "offline";
     const srcDoc = useMemo(() => buildChatHtmlDocument(html, true), [html]);
 
@@ -342,30 +343,68 @@ function ChatHtmlInlineFrame({
         return () => window.removeEventListener("message", handler);
     }, [onActionSelect]);
 
+    const handleCopySource = useCallback(() => {
+        navigator.clipboard?.writeText(html).catch(() => {});
+    }, [html]);
+
     return (
         <div className="chat-html-inline" data-chat-html-inline="" data-variant={variant}>
-            <iframe
-                ref={iframeRef}
-                className="chat-html-inline-frame"
-                srcDoc={srcDoc}
-                title="AI 生成互动内容"
-                style={{ height }}
-            />
-            {allowFullscreen ? (
+            {showSource ? (
+                <div className="chat-html-source-view">
+                    <pre className="chat-html-source-code"><code>{html}</code></pre>
+                    <button
+                        type="button"
+                        className="chat-html-source-copy"
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            handleCopySource();
+                        }}
+                        aria-label="复制源码"
+                        title="复制源码"
+                    >
+                        复制
+                    </button>
+                </div>
+            ) : (
+                <iframe
+                    ref={iframeRef}
+                    className="chat-html-inline-frame"
+                    srcDoc={srcDoc}
+                    title="AI 生成互动内容"
+                    style={{ height }}
+                />
+            )}
+            <div className="chat-html-inline-toolbar">
                 <button
                     type="button"
-                    className="chat-html-inline-expand"
+                    className="chat-html-inline-toggle"
                     onPointerDown={(e) => e.stopPropagation()}
                     onClick={(e) => {
                         e.stopPropagation();
-                        setExpanded(true);
+                        setShowSource(v => !v);
                     }}
-                    aria-label="全屏查看"
-                    title="全屏查看"
+                    aria-label={showSource ? "切换到预览" : "查看源码"}
+                    title={showSource ? "切换到预览" : "查看源码"}
                 >
-                    <Maximize2 size={14} aria-hidden="true" />
+                    {showSource ? <Eye size={14} aria-hidden="true" /> : <Code2 size={14} aria-hidden="true" />}
                 </button>
-            ) : null}
+                {allowFullscreen && !showSource ? (
+                    <button
+                        type="button"
+                        className="chat-html-inline-expand"
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setExpanded(true);
+                        }}
+                        aria-label="全屏查看"
+                        title="全屏查看"
+                    >
+                        <Maximize2 size={14} aria-hidden="true" />
+                    </button>
+                ) : null}
+            </div>
             {allowFullscreen && expanded && (
                 <HtmlFullscreenModal
                     html={html}
