@@ -1284,6 +1284,9 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
     const [editingResponseBatchId, setEditingResponseBatchId] = useState<string | null>(null);
     const [editingResponseRoundId, setEditingResponseRoundId] = useState<string | null>(null);
     const [editingResponseContent, setEditingResponseContent] = useState("");
+    // 带提示重新生成：记录要重生成的那条 assistant 消息 id + 用户填写的提示
+    const [regenHintTarget, setRegenHintTarget] = useState<string | null>(null);
+    const [regenHintText, setRegenHintText] = useState("");
     const [expandedVoiceCallIds, setExpandedVoiceCallIds] = useState<Set<string>>(new Set());
     const [highlightMessageId, setHighlightMessageId] = useState<string | null>(null);
     const [hasMore, setHasMore] = useState(false);
@@ -4116,6 +4119,44 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
         });
     };
 
+    // 带提示重新生成：删掉这条及之后的消息，把用户提示作为临时 system 指令拼进上下文再重生成
+    const handleRegenerateWithHint = async (msgId: string, hint: string) => {
+        const trimmedHint = hint.trim();
+        const msgIndex = messages.findIndex(m => m.id === msgId);
+        if (msgIndex === -1 || messages[msgIndex].role !== "assistant") return;
+
+        const contextMessages = messages.slice(0, msgIndex);
+
+        // 删掉这条及后面的所有消息
+        deleteChatMessagesFrom(msgId);
+        setMessages(prev => prev.slice(0, msgIndex));
+        setRegenHintTarget(null);
+        setRegenHintText("");
+        setActiveMessageId(null);
+        cancelFollowUp(session.id);
+
+        // 把提示作为一次性 system 指令挂在上下文末尾（不落库、不显示，仅本次生成生效）
+        const historyWithHint = trimmedHint
+            ? [
+                ...contextMessages,
+                {
+                    id: `${TRANSIENT_MESSAGE_PREFIX}regen-hint-${Date.now()}`,
+                    sessionId: session.id,
+                    role: "system" as const,
+                    content: `【重新生成要求】请根据以下要求重写上一条回复：${trimmedHint}`,
+                    status: "sent" as const,
+                    createdAt: new Date().toISOString(),
+                },
+              ]
+            : contextMessages;
+
+        await runManagedGeneration({
+            history: historyWithHint,
+            errorPrefix: "重新生成失败",
+            onDecline: triggerReply,
+        });
+    };
+
     const handleRetractMessage = (msgId: string) => {
         retractChatMessage(msgId);
         setMessages(prev => prev.map(m => m.id === msgId ? { ...m, isRetracted: true } : m));
@@ -4639,6 +4680,9 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
                     )}
                     {m.role === "assistant" && (
                         <button onClick={() => handleRetry(storedMessageId)} className="ctx-menu-btn ctx-menu-btn-danger">重试以下</button>
+                    )}
+                    {m.role === "assistant" && (
+                        <button onClick={() => { setRegenHintText(""); setRegenHintTarget(storedMessageId); setActiveMessageId(null); }} className="ctx-menu-btn ctx-menu-btn-danger">带提示重生成</button>
                     )}
                 </div>
                 <div className="flex">
@@ -6276,6 +6320,46 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
                                 className="ui-btn ui-btn-primary"
                                 type="button"
                             >保存</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {regenHintTarget && (
+                <div className="chat-html-overlay" onClick={() => { setRegenHintTarget(null); setRegenHintText(""); }}>
+                    <div
+                        className="g-card w-[min(84vw,420px)] max-h-[78vh] p-4 flex flex-col gap-3"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="flex items-center justify-between gap-3">
+                            <div className="flex flex-col gap-1">
+                                <span className="menu-label">带提示重新生成</span>
+                                <span className="menu-desc !mt-0">写一句要求（例如「语气再温柔一些」），本条及之后的消息会删除后按要求重写。留空则普通重试。</span>
+                            </div>
+                            <button
+                                onClick={() => { setRegenHintTarget(null); setRegenHintText(""); }}
+                                className="ui-bare-btn text-[var(--c-icon)] ts-18 leading-none"
+                                type="button"
+                            >✕</button>
+                        </div>
+                        <textarea
+                            autoFocus
+                            value={regenHintText}
+                            onChange={(e) => setRegenHintText(e.target.value)}
+                            placeholder="例如：回复语气再温柔一些 / 多一点动作描写 / 换个角度回应"
+                            className="w-full min-h-[120px] max-h-[52vh] resize-none rounded-2xl border border-[var(--c-border)] bg-[var(--c-input)] px-4 py-3 ts-14 text-[var(--c-text)] outline-none"
+                        />
+                        <div className="flex justify-end gap-2">
+                            <button
+                                onClick={() => { setRegenHintTarget(null); setRegenHintText(""); }}
+                                className="ui-btn ui-btn-outline"
+                                type="button"
+                            >取消</button>
+                            <button
+                                onClick={() => { void handleRegenerateWithHint(regenHintTarget, regenHintText); }}
+                                className="ui-btn ui-btn-primary"
+                                type="button"
+                            >重新生成</button>
                         </div>
                     </div>
                 </div>

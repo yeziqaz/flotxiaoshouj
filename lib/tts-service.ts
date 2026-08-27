@@ -197,9 +197,13 @@ async function synthesizeElevenLabs(text: string, config: VoiceApiConfig): Promi
             text,
             model_id: config.model || "eleven_multilingual_v2",
             voice_settings: {
-                stability: 0.34,
+                stability: typeof config.ttsStability === "number" && Number.isFinite(config.ttsStability)
+                    ? Math.min(1, Math.max(0, config.ttsStability))
+                    : 0.34,
                 similarity_boost: 0.75,
-                style: 0.84,
+                style: typeof config.ttsStyle === "number" && Number.isFinite(config.ttsStyle)
+                    ? Math.min(1, Math.max(0, config.ttsStyle))
+                    : 0.84,
                 use_speaker_boost: true,
             },
         }),

@@ -184,11 +184,15 @@ const DEFAULT_ELEVENLABS_VOICES = [
 ];
 
 const DEFAULT_ELEVENLABS_MODELS = [
+    { id: "eleven_v3", name: "eleven_v3 (最强表演/支持 audio tags)" },
     { id: "eleven_multilingual_v2", name: "eleven_multilingual_v2 (多语种/推荐)" },
     { id: "eleven_turbo_v2_5", name: "eleven_turbo_v2_5 (低延迟/多语种)" },
     { id: "eleven_flash_v2_5", name: "eleven_flash_v2_5 (极速)" },
     { id: "eleven_monolingual_v1", name: "eleven_monolingual_v1 (仅英语)" },
 ];
+
+const DEFAULT_TTS_STABILITY = 0.34;
+const DEFAULT_TTS_STYLE = 0.84;
 
 type VoiceOption = { id: string; name: string; createdAt?: number };
 
@@ -846,7 +850,41 @@ export function VoiceSettings() {
                                                             <option value="__manual__">手动输入...</option>
                                                         </select>
                                                     )}
-                                                    <span className="menu-desc ml-1">音色可在下方直接填 ElevenLabs 的 Voice ID（在 ElevenLabs 后台 VoiceLab 复制）</span>
+                                                    <span className="menu-desc ml-1">音色可在下方直接填 ElevenLabs 的 Voice ID（在 ElevenLabs 后台 VoiceLab 复制）；audio tags 玩法建议选 eleven_v3</span>
+                                                </div>
+                                                <div className="flex flex-col gap-1">
+                                                    <div className="flex items-center justify-between px-1">
+                                                        <label className="menu-desc">稳定性 (Stability)</label>
+                                                        <span className="menu-label font-medium">{(config.ttsStability ?? DEFAULT_TTS_STABILITY).toFixed(2)}</span>
+                                                    </div>
+                                                    <input
+                                                        type="range"
+                                                        min={0}
+                                                        max={1}
+                                                        step={0.01}
+                                                        value={config.ttsStability ?? DEFAULT_TTS_STABILITY}
+                                                        onChange={(e) => updateConfig(config.id, { ttsStability: Number(e.target.value) })}
+                                                        className="w-full accent-black"
+                                                        aria-label="ElevenLabs 稳定性"
+                                                    />
+                                                    <span className="menu-desc ml-1">越低表演/情绪随机波动越大（推荐 0.22~0.34），越高越稳但标签响应弱</span>
+                                                </div>
+                                                <div className="flex flex-col gap-1">
+                                                    <div className="flex items-center justify-between px-1">
+                                                        <label className="menu-desc">风格强度 (Style)</label>
+                                                        <span className="menu-label font-medium">{(config.ttsStyle ?? DEFAULT_TTS_STYLE).toFixed(2)}</span>
+                                                    </div>
+                                                    <input
+                                                        type="range"
+                                                        min={0}
+                                                        max={1}
+                                                        step={0.01}
+                                                        value={config.ttsStyle ?? DEFAULT_TTS_STYLE}
+                                                        onChange={(e) => updateConfig(config.id, { ttsStyle: Number(e.target.value) })}
+                                                        className="w-full accent-black"
+                                                        aria-label="ElevenLabs 风格强度"
+                                                    />
+                                                    <span className="menu-desc ml-1">越高情绪表现越夸张（推荐 0.84~0.92）</span>
                                                 </div>
                                             </>
                                         )}
