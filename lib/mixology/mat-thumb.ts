@@ -66,8 +66,8 @@ function shotBridge(token: string): string {
   }
   function shoot(){
     try{
-      /* 折叠件先摊开再拍：缩略图是给人在列表里认东西用的，
-         拍一条收起来的把手等于什么都没拍到。这是一次性的离屏文档，摊开不影响任何人 */
+      /* 折叠件先摊开再拍：封面是给人在列表里认东西用的，收起的把手拍不出内容。
+         酒柜卡的实时缩样也同样摊开（MixTicketFrame expandFolds），两边长一个样 */
       var fold=document.querySelectorAll("details:not([open])");
       for(var f=0;f<fold.length;f++){try{fold[f].setAttribute("open","");}catch(e){}}
       var w=Math.max(1,Math.ceil(document.documentElement.getBoundingClientRect().width||${RENDER_W}));
