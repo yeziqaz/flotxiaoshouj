@@ -181,37 +181,25 @@ async function synthesizeOpenAI(text: string, config: VoiceApiConfig): Promise<B
 // ── ElevenLabs TTS ────────────────────────────────────
 
 async function synthesizeElevenLabs(text: string, config: VoiceApiConfig): Promise<Blob | null> {
-    if (!config.apiKey) throw new Error("ElevenLabs API Key 未配置");
-
-    const baseUrl = (config.baseUrl || "https://api.elevenlabs.io/v1").replace(/\/$/, "");
-    const voiceId = config.defaultVoice || "21m00Tcm4TlvDq8ikWAM";
-
-    const response = await fetchWithTimeout(`${baseUrl}/text-to-speech/${voiceId}`, {
+    const response = await fetchWithTimeout("/api/voice/elevenlabs", {
         method: "POST",
         headers: {
-            "xi-api-key": config.apiKey,
             "Content-Type": "application/json",
-            Accept: "audio/mpeg",
         },
         body: JSON.stringify({
+            apiKey: config.apiKey,
+            baseUrl: config.baseUrl,
+            voiceId: config.defaultVoice,
             text,
-            model_id: config.model || "eleven_multilingual_v2",
-            voice_settings: {
-                stability: typeof config.ttsStability === "number" && Number.isFinite(config.ttsStability)
-                    ? Math.min(1, Math.max(0, config.ttsStability))
-                    : 0.34,
-                similarity_boost: 0.75,
-                style: typeof config.ttsStyle === "number" && Number.isFinite(config.ttsStyle)
-                    ? Math.min(1, Math.max(0, config.ttsStyle))
-                    : 0.84,
-                use_speaker_boost: true,
-            },
+            model: config.model,
+            stability: config.ttsStability,
+            style: config.ttsStyle,
         }),
     });
 
     if (!response.ok) {
-        const errText = await response.text().catch(() => "");
-        throw new Error(`ElevenLabs TTS 请求失败 (${response.status}): ${errText}`);
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.message || `ElevenLabs TTS 请求失败 (${response.status})`);
     }
 
     const blob = await response.blob();
