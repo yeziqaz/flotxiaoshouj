@@ -232,6 +232,7 @@ const CHAT_MEDIA_BUBBLE_TYPES = new Set([
     "xiaohongshu_note_share",
     "app_card",
     "media_file",
+    "audio",
 ]);
 
 const STANDALONE_CARD_BUBBLE_STYLE = {
